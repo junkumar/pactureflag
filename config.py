@@ -35,10 +35,10 @@ Settings:
 """
 
 # Alpha-Numeric only
-TeamName = 'BaselineAgents'
+TeamName = 'CustomAgents'
 
 # Filename.FactoryClassName (CASE-sensitive)
-AgentFactory = 'baselineAgents.AllOffenseAgents'
+AgentFactory = 'customAgents.OffenseDefenseAgents'
 
 Partners = ['Partner Names']
 
