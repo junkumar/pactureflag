@@ -74,16 +74,18 @@ class OffenseDefenseAgents(AgentFactory):
     if self.offense:
       return OffensiveReflexAgent(index)
     else:
-      return DefensiveReflexAgent(index)
+      return CustomDefensiveAgent(index)
 
 ##########
 # Agents #
 ##########
 
-class ReflexCaptureAgent(CaptureAgent):
+class CustomCaptureAgent(CaptureAgent):
   """
   A base class for reflex agents that chooses score-maximizing actions
   """
+  
+  ########################### MAP FUNCTIONS ############################
   
   def setValidPositions(self, gameState):
     """
@@ -111,6 +113,8 @@ class ReflexCaptureAgent(CaptureAgent):
     
     return positions
     
+  ######################## INFERENCE FUNCTIONS ########################
+    
   def initializeDistribution(self, gameState, agent):
     """
     Initializes the belief distribution in the field: beliefDistributions
@@ -118,8 +122,11 @@ class ReflexCaptureAgent(CaptureAgent):
     the map are given an equal probability
     """
     self.beliefDistributions[agent] = Counter()
-    for pos in self.validPositions:
-      self.beliefDistributions[agent][pos] = 1
+    walls = gameState.getWalls()
+    for (x,y) in self.validPositions:
+      if gameState.isOnRedTeam(agent) and x <= walls.width/2 or \
+        not gameState.isOnRedTeam(agent) and x >= walls.width/2:
+        self.beliefDistributions[agent][(x,y)] = 1
     self.beliefDistributions[agent].normalize()
           
   def initializeBeliefDistributions(self, gameState):
@@ -177,11 +184,38 @@ class ReflexCaptureAgent(CaptureAgent):
       newDistributions[agent] = distribution
     self.beliefDistributions = newDistributions
     
+  ###################### CONVENIENCE FUNCTIONS ######################
+    
   def getMostLikelyPosition(self, agent):
     """
     Returns the most likely position as a (x,y) tuple for the given agent
     """
     return self.beliefDistributions[agent].argMax()
+    
+  def getClosestAttacker(self, observedState):
+    """
+    Returns the agent number for the closest attacker (invaders i.e. pacmen)
+    are searched for first, if no invaders are found, the closest defender
+    (ghost) is returned
+    """    
+    myPos = observedState.getAgentPosition(self.index)
+    closestAttacker = None
+    isPacman = False
+    minDistance = float('inf')
+
+    for agent in self.getOpponents(observedState):
+      attackerPos = observedState.getAgentPosition(agent)
+      if attackerPos is None: attackerPos = self.getMostLikelyPosition(agent)
+      attackerDist = self.getMazeDistance(myPos, attackerPos)
+      if (not isPacman and (attackerDist < minDistance or \
+        observedState.getAgentState(agent).isPacman)) or \
+        (observedState.getAgentState(agent).isPacman and \
+        attackerDist < minDistance):
+        if observedState.getAgentState(agent).isPacman: isPacman = True
+        minDistance = attackerDist
+        closestAttacker = agent
+          
+    return closestAttacker
     
   def registerInitialState(self, gameState):
     """
@@ -198,6 +232,8 @@ class ReflexCaptureAgent(CaptureAgent):
     import __main__
     if '_display' in dir(__main__):
       self.display = __main__._display
+      
+  ######## THESE FUNCTIONS ARE CALLED/OVERRIDDEN BY REFLEX AGENTS #######
            
   def chooseAction(self, gameState):
     """
@@ -266,8 +302,38 @@ class ReflexCaptureAgent(CaptureAgent):
     a counter or a dictionary.
     """
     return {'successorScore': 1.0}
+    
+######################### CUSTOM DEFENSIVE AGENT #########################
+    
+class CustomDefensiveAgent(CustomCaptureAgent):
 
-class OffensiveReflexAgent(ReflexCaptureAgent):
+  def chooseAction(self, gameState):
+  
+    observedState = self.getCurrentObservation()
+    self.observe(observedState)
+    self.elapseTime(observedState)
+
+    actions = observedState.getLegalActions(self.index)
+    myPos = observedState.getAgentPosition(self.index)
+    closestAttacker = self.getClosestAttacker(observedState)
+    bestAction = Directions.STOP
+    
+    attackerPos = observedState.getAgentPosition(closestAttacker)
+    if attackerPos is None: attackerPos = self.getMostLikelyPosition(closestAttacker)
+    minDistance = self.getMazeDistance(myPos, attackerPos)
+    for action in actions:
+      successor = observedState.generateSuccessor(self.index, action)
+      myNewPos = successor.getAgentPosition(self.index)
+      newDist = self.getMazeDistance(myNewPos, attackerPos)
+      if newDist < minDistance and not successor.getAgentState(self.index).isPacman:
+        minDistance = newDist
+        bestAction = action
+        
+    return bestAction
+    
+######################### SIMPLE REFLEX AGENTS ##########################
+
+class OffensiveReflexAgent(CustomCaptureAgent):
   """
   A reflex agent that seeks food. This is an agent
   we give you to get an idea of what an offensive agent might look like,
@@ -290,7 +356,7 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
   def getWeights(self, gameState, action):
     return {'successorScore': 100, 'distanceToFood': -1}
 
-class DefensiveReflexAgent(ReflexCaptureAgent):
+class DefensiveReflexAgent(CustomCaptureAgent):
   """
   A reflex agent that keeps its side Pacman-free. Again,
   this is to give you an idea of what a defensive agent
