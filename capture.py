@@ -299,10 +299,11 @@ class GameState:
       return configOrPos.pos[0] < width / 2
 
 def halfGrid(grid, red):
-  halfway = grid.width / 2
+  tilewidth = grid.width - 1
+  halfway = tilewidth / 2
   halfgrid = Grid(grid.width, grid.height, False)
   if red:    xrange = range(halfway)
-  else:       xrange = range(halfway, grid.width)
+  else:       xrange = range(halfway, tilewidth)
 
   for y in range(grid.height):
     for x in xrange:

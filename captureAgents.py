@@ -14,6 +14,7 @@ from game import Agent
 import distanceCalculator
 from util import nearestPoint
 import util
+import random
 
 class AgentFactory:
   "Generates agents for a side"

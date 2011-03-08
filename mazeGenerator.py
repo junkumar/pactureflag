@@ -178,10 +178,12 @@ def add_pacman_stuff(maze, max_food=60, max_capsules=4):
         if depth >= max_depth: break
 
     ## starting pacmen positions
-    maze.grid[maze.r-2][1] = '3'
-    maze.grid[maze.r-3][1] = '1'
-    maze.grid[1][maze.c-2] = '4'
-    maze.grid[2][maze.c-2] = '2'
+    maze.grid[maze.r-2][1] = '5'
+    maze.grid[maze.r-3][1] = '3'
+    maze.grid[maze.r-4][1] = '1'
+    maze.grid[1][maze.c-2] = '6'
+    maze.grid[2][maze.c-2] = '4'
+    maze.grid[3][maze.c-2] = '2'
 
     ## add capsules
     total_capsules = 0

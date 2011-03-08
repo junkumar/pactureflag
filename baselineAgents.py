@@ -8,6 +8,7 @@
 
 from captureAgents import CaptureAgent
 from captureAgents import AgentFactory
+from captureAgents import RandomAgent
 import distanceCalculator
 import random, time, util
 from game import Directions
@@ -48,6 +49,8 @@ class BaselineAgents(AgentFactory):
       return OffensiveReflexAgent(index)
     elif agentStr == 'defense':
       return DefensiveReflexAgent(index)
+    elif agentStr == 'random':
+      return RandomAgent(index) 
     else:
       raise Exception("No staff agent identified by " + agentStr)
 
