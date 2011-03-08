@@ -38,18 +38,18 @@ class BaselineAgents(AgentFactory):
   		if index<2:
   			return self.choose('customdefense', index)
   		elif index<4:
-  			return self.choose('customdefense', index)
+  			return self.choose('caesar1', index)
   		else:
-  			return self.choose('caesar', index)
+  			return self.choose('caesar1', index)
   	
 
   	else:
   		if index<2:
-  			return self.choose('caesar1', index)
+  			return self.choose('customdefense', index)
   		elif index<4:
-  			return self.choose('caesar1', index)
+  			return self.choose('caesar', index)
   		else:
-  			return self.choose('caesar1', index)
+  			return self.choose('caesar', index)
     
     	
       
@@ -644,30 +644,44 @@ class CustomCaptureAgent(CaptureAgent):
     
 class CustomDefensiveAgent(CustomCaptureAgent):
 
-  def chooseAction(self, gameState):
-  
-    observedState = self.getCurrentObservation()
-    self.observe(observedState)
-    self.elapseTime(observedState)
+ def chooseAction(self, gameState):
 
-    actions = observedState.getLegalActions(self.index)
-    myPos = observedState.getAgentPosition(self.index)
-    attackers = self.getMostDangerousOpponents(observedState)
-    bestAction = Directions.STOP
-    
-    closestAttacker = attackers[self.index/2]
-    attackerPos = observedState.getAgentPosition(closestAttacker)
-    if attackerPos is None: attackerPos = self.getMostLikelyPosition(closestAttacker)
-    minDistance = self.getMazeDistance(myPos, attackerPos)
-    for action in actions:
-      successor = observedState.generateSuccessor(self.index, action)
-      myNewPos = successor.getAgentPosition(self.index)
-      newDist = self.getMazeDistance(myNewPos, attackerPos)
-      if newDist < minDistance and not successor.getAgentState(self.index).isPacman:
-        minDistance = newDist
-        bestAction = action
-                
-    return bestAction
+   observedState = self.getCurrentObservation()
+   self.observe(observedState)
+   self.elapseTime(observedState)
+
+   actions = observedState.getLegalActions(self.index)
+   myPos = observedState.getAgentPosition(self.index)
+   bestAction = Directions.STOP
+
+   if gameState.getAgentState(self.index).scaredTimer > 0:
+     closestAttacker = self.getClosestAttacker(observedState)
+     attackerPos = observedState.getAgentPosition(closestAttacker)
+     if attackerPos is None: attackerPos = self.getMostLikelyPosition(closestAttacker)
+     maxDistance = self.getMazeDistance(myPos, attackerPos)
+     for action in actions:
+       successor = observedState.generateSuccessor(self.index, action)
+       myNewPos = successor.getAgentPosition(self.index)
+       newDist = self.getMazeDistance(myNewPos, attackerPos)
+       if newDist > maxDistance and not successor.getAgentState(self.index).isPacman:
+         maxDistance = newDist
+         bestAction = action
+   else:
+     attackers = self.getMostDangerousOpponents(observedState)
+     closestAttacker = attackers[self.index/2]
+     attackerPos = observedState.getAgentPosition(closestAttacker)
+     if attackerPos is None: attackerPos = self.getMostLikelyPosition(closestAttacker)
+     minDistance = self.getMazeDistance(myPos, attackerPos)
+     for action in actions:
+       successor = observedState.generateSuccessor(self.index, action)
+       myNewPos = successor.getAgentPosition(self.index)
+       newDist = self.getMazeDistance(myNewPos, attackerPos)
+       if newDist < minDistance and not successor.getAgentState(self.index).isPacman:
+         minDistance = newDist
+         bestAction = action
+
+   return bestAction
+
     
 class Hannibal(CustomCaptureAgent):
 
