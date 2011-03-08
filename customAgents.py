@@ -98,7 +98,7 @@ class CustomCaptureAgent(CaptureAgent):
       for y in range(walls.height):
         if not walls[x][y]:
           self.validPositions.append((x,y))
-          
+
   def getValidNeighboringPositions(self, gameState, (x,y)):
     """
     Returns a list of valid neigboring tuple positions to the given position
@@ -234,7 +234,7 @@ class CustomCaptureAgent(CaptureAgent):
       self.display = __main__._display
       
   ######## THESE FUNCTIONS ARE CALLED/OVERRIDDEN BY REFLEX AGENTS #######
-           
+
   def chooseAction(self, gameState):
     """
     Picks among the actions with the highest Q(s,a).
@@ -249,7 +249,8 @@ class CustomCaptureAgent(CaptureAgent):
     maxValue = max(values)
     bestActions = [a for a, v in zip(actions, values) if v == maxValue]
    
-    """ TEST CODE
+    """
+    TEST CODE
     distributions = []
     for agent in range(gameState.getNumAgents()):
       if agent in self.beliefDistributions:
@@ -302,6 +303,73 @@ class CustomCaptureAgent(CaptureAgent):
     a counter or a dictionary.
     """
     return {'successorScore': 1.0}
+
+class CustomExMaxAgent(CustomCaptureAgent):
+  """
+  A base class for expectimax agents that chooses score-maximizing actions
+  To use this agent derive the offensive/defensive agents from this instead of CustomCaptureAgent
+  """
+  def expectimax(self, state, depth, visibleAgents, visIndex):
+    agent = visibleAgents[visIndex]
+    # print "Blue", state.getBlueTeamIndices()
+    # print "Red", state.getRedTeamIndices()
+    # print "This agent is", agent
+    # print "self.index is", self.index
+    # print "depth is", depth
+
+    # Base case
+    # if depth == 0 or state.isWin() or state.isLose():
+    if depth == 0 or state.isOver():
+      return self.evaluate(state, Directions.STOP)
+
+    if visIndex == 0:
+      nextagent = len(visibleAgents) - 1
+    else:
+      nextagent = visIndex - 1
+
+    if agent == self.index:  # My ideal decision
+      value = float('-inf')
+      for action in state.getLegalActions(agent):
+        successor = self.getSuccessor(state, action)
+        result = self.expectimax(successor, (depth-1 if visIndex == 0 else depth), visibleAgents, nextagent)
+        value = value if value > result else result
+      return value   # Return max value
+
+    else: # My opponents' decision
+      value = 0
+      numOptions = len(state.getLegalActions(agent))
+      for action in state.getLegalActions(agent):
+        successor = state.generateSuccessor(agent, action)
+        value += (1.0/numOptions) * self.expectimax(successor, (depth-1 if visIndex == 0 else depth), visibleAgents, nextagent)
+      return value  # Return sum of expected values
+
+  def chooseAction(self, gameState):
+    """
+    Picks among the actions with the highest Q(s,a).
+    """
+    if gameState.isOnRedTeam(self.index): otherTeam = gameState.getBlueTeamIndices()
+    else: otherTeam = gameState.getRedTeamIndices()
+
+    value = None
+    bestAction = Directions.STOP
+    for action in gameState.getLegalActions(self.index):
+      successor = self.getSuccessor(gameState, action)
+      self.depth = 2 #FIXME - should do this in __init somewhere.
+      allAgents = range(0, gameState.getNumAgents()-1)
+      visibleAgents = [a for a in allAgents if gameState.getAgentState(a).getPosition() != None]
+      # print "visibleAgents ", visibleAgents 
+      result = self.expectimax(successor, self.depth, visibleAgents,
+                               len(visibleAgents)-1)
+      if result > value:
+        value = result
+        bestAction = action
+
+    observedState = self.getCurrentObservation()
+    self.observe(observedState)
+    self.elapseTime(observedState)
+
+    return bestAction
+
     
 ######################### CUSTOM DEFENSIVE AGENT #########################
     
@@ -328,7 +396,7 @@ class CustomDefensiveAgent(CustomCaptureAgent):
       if newDist < minDistance and not successor.getAgentState(self.index).isPacman:
         minDistance = newDist
         bestAction = action
-        
+
     return bestAction
     
 ######################### SIMPLE REFLEX AGENTS ##########################
@@ -356,7 +424,7 @@ class OffensiveReflexAgent(CustomCaptureAgent):
   def getWeights(self, gameState, action):
     return {'successorScore': 100, 'distanceToFood': -1}
 
-class DefensiveReflexAgent(CustomCaptureAgent):
+class DefensiveReflexAgent(CustomExMaxAgent):
   """
   A reflex agent that keeps its side Pacman-free. Again,
   this is to give you an idea of what a defensive agent
